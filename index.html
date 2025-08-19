@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>飞行模拟器 - Flight Simulator</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #0c1445 0%, #1a2980 50%, #26d0ce 100%);
+            color: #ffffff;
+            overflow-x: hidden;
+            min-height: 100vh;
+        }
+
+        .header {
+            background: rgba(0, 0, 0, 0.8);
+            padding: 1rem 2rem;
+            backdrop-filter: blur(10px);
+            border-bottom: 2px solid #00ff88;
+        }
+
+        .header h1 {
+            text-align: center;
+            font-size: 2.5rem;
+            color: #00ff88;
+            text-shadow: 0 0 20px #00ff88;
+            letter-spacing: 2px;
+        }
+
+        .main-container {
+            display: grid;
+            grid-template-columns: 1fr 2fr 1fr;
+            gap: 2rem;
+            padding: 2rem;
+            min-height: calc(100vh - 120px);
+        }
+
+        .left-panel, .right-panel {
+            background: rgba(0, 0, 0, 0.7);
+            border-radius: 15px;
+            padding: 1.5rem;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(0, 255, 136, 0.3);
+        }
+
+        .center-panel {
+            background: rgba(0, 0, 0, 0.8);
+            border-radius: 15px;
+            padding: 2rem;
+            backdrop-filter: blur(10px);
+            border: 2px solid #00ff88;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .panel-title {
+            color: #00ff88;
+            font-size: 1.2rem;
+            margin-bottom: 1rem;
+            text-align: center;
+            border-bottom: 2px solid #00ff88;
+            padding-bottom: 0.5rem;
+        }
+
+        /* 飞行仪表盘 */
+        .instrument-panel {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .instrument {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            background: radial-gradient(circle, #1a1a1a 0%, #000 100%);
+            border: 3px solid #00ff88;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            margin: 0 auto;
+            box-shadow: 0 0 20px rgba(0, 255, 136, 0.3);
+        }
+
+        .instrument::before {
+            content: '';
+            position: absolute;
+            width: 2px;
+            height: 40px;
+            background: #ff4444;
+            top: 20px;
+            border-radius: 2px;
+            transform-origin: bottom center;
+            animation: rotate 3s linear infinite;
+        }
+
+        .instrument-label {
+            position: absolute;
+            bottom: -30px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 0.8rem;
+            color: #00ff88;
+        }
+
+        @keyframes rotate {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* 控制面板 */
+        .control-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .control-label {
+            display: block;
+            color: #00ff88;
+            margin-bottom: 0.5rem;
+            font-weight: bold;
+        }
+
+        .control-input {
+            width: 100%;
+            padding: 0.5rem;
+            background: rgba(0, 0, 0, 0.8);
+            border: 1px solid #00ff88;
+            border-radius: 5px;
+            color: #ffffff;
+            font-size: 1rem;
+        }
+
+        .control-input:focus {
+            outline: none;
+            box-shadow: 0 0 10px #00ff88;
+        }
+
+        .slider {
+            width: 100%;
+            height: 5px;
+            border-radius: 5px;
+            background: #333;
+            outline: none;
+            -webkit-appearance: none;
+        }
+
+        .slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #00ff88;
+            cursor: pointer;
+            box-shadow: 0 0 10px #00ff88;
+        }
+
+        .button {
+            background: linear-gradient(45deg, #00ff88, #00cc6a);
+            border: none;
+            padding: 0.8rem 1.5rem;
+            border-radius: 8px;
+            color: #000;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin: 0.5rem;
+            font-size: 1rem;
+        }
+
+        .button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(0, 255, 136, 0.4);
+        }
+
+        .button.danger {
+            background: linear-gradient(45deg, #ff4444, #cc0000);
+            color: #fff;
+        }
+
+        /* 雷达屏幕 */
+        .radar-screen {
+            width: 200px;
+            height: 200px;
+            border-radius: 50%;
+            background: radial-gradient(circle, #003300 0%, #000 100%);
+            border: 2px solid #00ff88;
+            position: relative;
+            margin: 1rem auto;
+            overflow: hidden;
+        }
+
+        .radar-sweep {
+            position: absolute;
+            width: 2px;
+            height: 100px;
+            background: linear-gradient(to bottom, #00ff88, transparent);
+            top: 50%;
+            left: 50%;
+            transform-origin: bottom center;
+            animation: sweep 2s linear infinite;
+        }
+
+        @keyframes sweep {
+            0% { transform: translate(-50%, -100%) rotate(0deg); }
+            100% { transform: translate(-50%, -100%) rotate(360deg); }
+        }
+
+        .radar-grid {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+        }
+
+        .radar-grid::before,
+        .radar-grid::after {
+            content: '';
+            position: absolute;
+            border: 1px solid rgba(0, 255, 136, 0.3);
+        }
+
+        .radar-grid::before {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+
+        .radar-grid::after {
+            width: 150px;
+            height: 150px;
+            border-radius: 50%;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+
+        /* 状态指示器 */
+        .status-indicators {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+
+        .status-item {
+            display: flex;
+            align-items: center;
+            padding: 0.5rem;
+            background: rgba(0, 0, 0, 0.5);
+            border-radius: 5px;
+            border-left: 4px solid #00ff88;
+        }
+
+        .status-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #00ff88;
+            margin-right: 0.5rem;
+            animation: pulse 2s infinite;
+        }
+
+        .status-dot.warning {
+            background: #ffaa00;
+        }
+
+        .status-dot.danger {
+            background: #ff4444;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+
+        /* 响应式设计 */
+        @media (max-width: 768px) {
+            .main-container {
+                grid-template-columns: 1fr;
+                gap: 1rem;
+                padding: 1rem;
+            }
+
+            .header h1 {
+                font-size: 1.8rem;
+            }
+
+            .instrument-panel {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* 3D效果和动画 */
+        .center-panel::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: conic-gradient(transparent, rgba(0, 255, 136, 0.1), transparent);
+            animation: rotate-bg 10s linear infinite;
+            z-index: -1;
+        }
+
+        @keyframes rotate-bg {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <h1>✈️ 飞行模拟器控制台</h1>
+    </header>
+
+    <div class="main-container">
+        <!-- 左侧控制面板 -->
+        <div class="left-panel">
+            <h2 class="panel-title">飞行控制</h2>
+            
+            <div class="control-group">
+                <label class="control-label">油门控制</label>
+                <input type="range" class="slider" min="0" max="100" value="50" id="throttle">
+                <span id="throttle-value">50%</span>
+            </div>
+
+            <div class="control-group">
+                <label class="control-label">升降舵</label>
+                <input type="range" class="slider" min="-50" max="50" value="0" id="elevator">
+                <span id="elevator-value">0°</span>
+            </div>
+
+            <div class="control-group">
+                <label class="control-label">方向舵</label>
+                <input type="range" class="slider" min="-50" max="50" value="0" id="rudder">
+                <span id="rudder-value">0°</span>
+            </div>
+
+            <div class="control-group">
+                <label class="control-label">副翼</label>
+                <input type="range" class="slider" min="-50" max="50" value="0" id="aileron">
+                <span id="aileron-value">0°</span>
+            </div>
+
+            <div class="control-group">
+                <button class="button">自动驾驶</button>
+                <button class="button danger">紧急制动</button>
+            </div>
+        </div>
+
+        <!-- 中央仪表盘 -->
+        <div class="center-panel">
+            <h2 class="panel-title">飞行仪表</h2>
+            
+            <div class="instrument-panel">
+                <div class="instrument">
+                    <div class="instrument-label">空速表</div>
+                    <span style="color: #00ff88; font-size: 1.2rem; font-weight: bold;">250</span>
+                </div>
+                <div class="instrument">
+                    <div class="instrument-label">高度表</div>
+                    <span style="color: #00ff88; font-size: 1.2rem; font-weight: bold;">8500</span>
+                </div>
+                <div class="instrument">
+                    <div class="instrument-label">姿态仪</div>
+                    <span style="color: #00ff88; font-size: 1.2rem; font-weight: bold;">+5°</span>
+                </div>
+                <div class="instrument">
+                    <div class="instrument-label">航向仪</div>
+                    <span style="color: #00ff88; font-size: 1.2rem; font-weight: bold;">090</span>
+                </div>
+            </div>
+
+            <div class="radar-screen">
+                <div class="radar-grid"></div>
+                <div class="radar-sweep"></div>
+            </div>
+
+            <div class="control-group">
+                <button class="button">开始飞行</button>
+                <button class="button">暂停模拟</button>
+                <button class="button danger">重置场景</button>
+            </div>
+        </div>
+
+        <!-- 右侧状态面板 -->
+        <div class="right-panel">
+            <h2 class="panel-title">系统状态</h2>
+            
+            <div class="status-indicators">
+                <div class="status-item">
+                    <div class="status-dot"></div>
+                    <span>引擎状态</span>
+                </div>
+                <div class="status-item">
+                    <div class="status-dot"></div>
+                    <span>燃油系统</span>
+                </div>
+                <div class="status-item">
+                    <div class="status-dot warning"></div>
+                    <span>导航系统</span>
+                </div>
+                <div class="status-item">
+                    <div class="status-dot"></div>
+                    <span>通信系统</span>
+                </div>
+                <div class="status-item">
+                    <div class="status-dot danger"></div>
+                    <span>警告系统</span>
+                </div>
+                <div class="status-item">
+                    <div class="status-dot"></div>
+                    <span>着陆装置</span>
+                </div>
+            </div>
+
+            <div class="control-group" style="margin-top: 2rem;">
+                <h3 style="color: #00ff88; margin-bottom: 1rem;">飞行信息</h3>
+                <div style="background: rgba(0,0,0,0.5); padding: 1rem; border-radius: 8px;">
+                    <p><strong>当前位置:</strong> 35.6762°N, 139.6503°E</p>
+                    <p><strong>飞行时间:</strong> <span id="flight-time">00:15:42</span></p>
+                    <p><strong>剩余燃油:</strong> 75%</p>
+                    <p><strong>天气状况:</strong> 晴朗</p>
+                    <p><strong>风速:</strong> 15 节</p>
+                    <p><strong>能见度:</strong> 10+ 公里</p>
+                </div>
+            </div>
+
+            <div class="control-group">
+                <h3 style="color: #00ff88; margin-bottom: 1rem;">快捷操作</h3>
+                <button class="button" style="width: 100%; margin: 0.2rem 0;">起飞检查</button>
+                <button class="button" style="width: 100%; margin: 0.2rem 0;">进近模式</button>
+                <button class="button" style="width: 100%; margin: 0.2rem 0;">着陆检查</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 添加交互功能
+        document.addEventListener('DOMContentLoaded', function() {
+            // 滑块值更新
+            const throttle = document.getElementById('throttle');
+            const elevator = document.getElementById('elevator');
+            const rudder = document.getElementById('rudder');
+            const aileron = document.getElementById('aileron');
+
+            throttle.addEventListener('input', function() {
+                document.getElementById('throttle-value').textContent = this.value + '%';
+            });
+
+            elevator.addEventListener('input', function() {
+                document.getElementById('elevator-value').textContent = this.value + '°';
+            });
+
+            rudder.addEventListener('input', function() {
+                document.getElementById('rudder-value').textContent = this.value + '°';
+            });
+
+            aileron.addEventListener('input', function() {
+                document.getElementById('aileron-value').textContent = this.value + '°';
+            });
+
+            // 飞行时间更新
+            let flightSeconds = 942; // 15:42 in seconds
+            setInterval(function() {
+                flightSeconds++;
+                const hours = Math.floor(flightSeconds / 3600);
+                const minutes = Math.floor((flightSeconds % 3600) / 60);
+                const seconds = flightSeconds % 60;
+                
+                const timeString = 
+                    String(hours).padStart(2, '0') + ':' +
+                    String(minutes).padStart(2, '0') + ':' +
+                    String(seconds).padStart(2, '0');
+                
+                document.getElementById('flight-time').textContent = timeString;
+            }, 1000);
+
+            // 按钮点击效果
+            document.querySelectorAll('.button').forEach(button => {
+                button.addEventListener('click', function() {
+                    this.style.transform = 'scale(0.95)';
+                    setTimeout(() => {
+                        this.style.transform = '';
+                    }, 150);
+                });
+            });
+
+            // 随机更新仪表数据
+            setInterval(function() {
+                const instruments = document.querySelectorAll('.instrument span');
+                if (instruments.length >= 4) {
+                    // 更新空速表 (200-300)
+                    instruments[0].textContent = Math.floor(Math.random() * 100 + 200);
+                    // 更新高度表 (8000-9000)
+                    instruments[1].textContent = Math.floor(Math.random() * 1000 + 8000);
+                    // 更新姿态仪 (-10 to +10)
+                    const attitude = (Math.random() * 20 - 10).toFixed(1);
+                    instruments[2].textContent = (attitude >= 0 ? '+' : '') + attitude + '°';
+                    // 更新航向仪 (000-360)
+                    instruments[3].textContent = String(Math.floor(Math.random() * 360)).padStart(3, '0');
+                }
+            }, 2000);
+        });
+    </script>
+</body>
+</html>
+
